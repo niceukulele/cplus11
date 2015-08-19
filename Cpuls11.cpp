@@ -11,6 +11,7 @@
 #include <string.h>
 #include <iostream>
 #include <vector>
+#include <memory>
 void process_value(int& i)
 {
     std::cout << "LValue processed" << i << std::endl;
@@ -19,10 +20,21 @@ void process_value(int&& i)
 {
     std::cout << "RValue processed" << i << std::endl;
 }
-void process_value
+void process_value(const int& i)
+{
+    std::cout << "Const LValue processed" << i << std::endl;
+}
+void process_value(const int&& i)
+{
+    std::cout << "Const RValue processed" << i << std::endl;
+}
 int foo()
 {
     return -1;
+}
+const int foo_const()
+{
+    return 143;
 }
 #if 1
 class MyString {
@@ -34,16 +46,17 @@ class MyString {
         _data[_len] = '\0';
     }
 public:
-    MyString() {
+    explicit MyString() {
         _data = NULL;
         _len = 0;
     }
-    MyString(const char *s) {
+    explicit MyString(const char *s) {
         //assert(s)；
         _len = strlen(s);
         _init_data(s);
+        std::cout << "common ctor" << std::endl;
     }
-    MyString(const MyString& str) {
+    explicit MyString(const MyString& str) {
         _len = str._len;
         _init_data(str._data);
         std::cout << "copy ctor" << std::endl;
@@ -54,7 +67,7 @@ public:
         std::cout << "copy assign ctor" << std::endl;
         return *this;
     }
-    MyString(MyString&& str) {
+    explicit MyString(MyString&& str) {
         _len = str._len;
         _init_data(str._data);
         str._data = nullptr;
@@ -70,8 +83,21 @@ public:
         std::cout << "move assign ctor" << std::endl;
         return *this;
     }
+    ~MyString() {
+        if (_data)
+            delete _data;
+        _data = nullptr;
+        _len = 0;
+        std::cout << "dtor" << std::endl;
+    }
 };
 #endif
+template <class T, class U>
+std::shared_ptr<T>
+factory(const U& a)
+{
+    return std::shared_ptr<T>(new T(a));
+}
 int main(void) {
 #if 1
     auto i = 100;
@@ -86,13 +112,16 @@ int main(void) {
 #if 1
 	const int&& t1 = 8;
 	int&& t2 = 5;
-	//process_value(t1);
-	process_value(t2);
+        int t3 = 5;
+	process_value(foo_const());
+	process_value(std::move(t2));
 	MyString sa;
 	sa = MyString("Hello");
-	MyString sb(std::move(sa));
-	std::vector<MyString> vec;
-	vec.push_back(MyString("World"));
+	//MyString sb(std::move(sa));
+	//std::vector<MyString> vec;
+	//vec.push_back(MyString("World"));
+    std::shared_ptr<MyString> p = factory<MyString>("hello");
+    std::shared_ptr<int> q = factory<int>(t3);
 #endif
 	//std::map<std::string, std::vector<int> > map;
 	return EXIT_SUCCESS;
